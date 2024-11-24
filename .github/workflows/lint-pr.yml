@@ -12,7 +12,7 @@ name: semantic-pr
 
 jobs:
   main:
-    if: github.repository == 'erka/exta'
+    if: github.repository == 'erka/openfeature-go-ofrep-provider'
     name: Validate PR title
     runs-on: ubuntu-latest
     steps:

@@ -14,7 +14,7 @@ import (
 
 const ofrepV1 = "/ofrep/v1/evaluate/flags"
 
-// HeaderCallback is a callback returning header name and header value
+// HeaderCallback is a callback returning header name and header value.
 type HeaderCallback func() (name string, value string)
 
 type Configuration struct {
@@ -38,14 +38,14 @@ type Resolution struct {
 	Headers http.Header
 }
 
-// Outbound client for http communication
+// Outbound client for http communication.
 type Outbound struct {
 	baseURI        string
 	client         *http.Client
 	headerProvider []HeaderCallback
 }
 
-func NewHttp(cfg Configuration) *Outbound {
+func NewHTTP(cfg Configuration) *Outbound {
 	if cfg.Client == nil {
 		cfg.Client = &http.Client{
 			Timeout: 10 * time.Second,
@@ -88,13 +88,13 @@ func (h *Outbound) sendRequest(ctx context.Context, path string, payload []byte)
 
 	rsp, err := h.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to make a request: %w", err)
 	}
 	defer rsp.Body.Close()
 
 	b, err := io.ReadAll(rsp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read the body: %w", err)
 	}
 
 	return &Resolution{

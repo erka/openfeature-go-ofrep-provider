@@ -25,7 +25,7 @@ type Outbound interface {
 }
 
 func NewOutboundResolver(cfg outbound.Configuration) *OutboundResolver {
-	return &OutboundResolver{client: outbound.NewHttp(cfg)}
+	return &OutboundResolver{client: outbound.NewHTTP(cfg)}
 }
 
 func (g *OutboundResolver) resolveSingle(ctx context.Context, key string, evalCtx map[string]interface{}) (

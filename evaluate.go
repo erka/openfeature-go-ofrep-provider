@@ -6,7 +6,7 @@ import (
 	of "github.com/open-feature/go-sdk/openfeature"
 )
 
-// Evaluator contract for flag evaluation
+// Evaluator contract for flag evaluation.
 type Evaluator interface {
 	ResolveBoolean(ctx context.Context, key string, defaultValue bool,
 		evalCtx map[string]interface{}) of.BoolResolutionDetail

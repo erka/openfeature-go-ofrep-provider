@@ -20,8 +20,8 @@ var evalCtx = of.NewEvaluationContext("keyboard", map[string]any{
 
 func TestBulkProviderEvaluationE2EBasic(t *testing.T) {
 	of.SetEvaluationContext(evalCtx)
-	baseUrl := setupTestServer(t)
-	p := ofrep.NewBulkProvider(baseUrl, ofrep.WithBearerToken("api-key"))
+	baseURL := setupTestServer(t)
+	p := ofrep.NewBulkProvider(baseURL, ofrep.WithBearerToken("api-key"))
 
 	err := of.SetProviderAndWait(p)
 	if err != nil {
@@ -55,8 +55,8 @@ func TestBulkProviderEvaluationE2EBasic(t *testing.T) {
 
 func TestBulkProviderEvaluationE2EPolling(t *testing.T) {
 	of.SetEvaluationContext(evalCtx)
-	baseUrl := setupTestServer(t)
-	p := ofrep.NewBulkProvider(baseUrl, ofrep.WithBearerToken("api-key"), ofrep.WithPollingInterval(30*time.Millisecond))
+	baseURL := setupTestServer(t)
+	p := ofrep.NewBulkProvider(baseURL, ofrep.WithBearerToken("api-key"), ofrep.WithPollingInterval(30*time.Millisecond))
 
 	err := of.SetProviderAndWait(p)
 	if err != nil {
@@ -75,21 +75,21 @@ func TestBulkProviderEvaluationE2EPolling(t *testing.T) {
 	}
 }
 
-func setupTestServer(t testing.TB) string {
-	t.Helper()
+func setupTestServer(tb testing.TB) string {
+	tb.Helper()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ofrep/v1/evaluate/flags", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			t.Errorf("expected post request, got: %v", r.Method)
+			tb.Errorf("expected post request, got: %v", r.Method)
 		}
 
 		if r.Header.Get("Authorization") != "Bearer api-key" {
-			t.Errorf("expected Authorization header, got: %v", r.Header.Get("Authorization"))
+			tb.Errorf("expected Authorization header, got: %v", r.Header.Get("Authorization"))
 		}
 
 		requestData, err := io.ReadAll(r.Body)
 		if err != nil {
-			t.Errorf("error reading request data: %v", err)
+			tb.Errorf("error reading request data: %v", err)
 		}
 
 		evalData := struct {
@@ -98,12 +98,12 @@ func setupTestServer(t testing.TB) string {
 
 		err = json.Unmarshal(requestData, &evalData)
 		if err != nil {
-			t.Errorf("error parsing request data: %v", err)
+			tb.Errorf("error parsing request data: %v", err)
 		}
 
 		flatCtx := ofrep.FlattenContext(evalCtx)
 		if !maps.Equal(flatCtx, evalData.Context) {
-			t.Errorf("expected request data with %v, but got %v", flatCtx, evalData.Context)
+			tb.Errorf("expected request data with %v, but got %v", flatCtx, evalData.Context)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -114,11 +114,11 @@ func setupTestServer(t testing.TB) string {
     ]}`
 		_, err = w.Write([]byte(data))
 		if err != nil {
-			t.Errorf("error writing response: %v", err)
+			tb.Errorf("error writing response: %v", err)
 		}
 	})
 
 	s := httptest.NewServer(mux)
-	t.Cleanup(s.Close)
+	tb.Cleanup(s.Close)
 	return s.URL
 }

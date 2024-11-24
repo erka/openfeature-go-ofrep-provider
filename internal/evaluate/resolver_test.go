@@ -92,7 +92,7 @@ func TestSuccess200(t *testing.T) {
 		}}
 		success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
 
-		validateErrorCode(success, resolutionError, of.ParseErrorCode, t)
+		validateErrorCode(t, success, resolutionError, of.ParseErrorCode)
 	})
 
 	t.Run("invalid metadata results in a parsing error", func(t *testing.T) {
@@ -109,7 +109,7 @@ func TestSuccess200(t *testing.T) {
 		}}
 		success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
 
-		validateErrorCode(success, resolutionError, of.ParseErrorCode, t)
+		validateErrorCode(t, success, resolutionError, of.ParseErrorCode)
 	})
 	t.Run("no metadata in the ofrep response", func(t *testing.T) {
 		b, err := json.Marshal(successWithoutMetadata)
@@ -171,7 +171,7 @@ func TestResolveGeneralErrors(t *testing.T) {
 			resolver := OutboundResolver{client: test.client}
 			success, resolutionError := resolver.resolveSingle(context.Background(), "key", map[string]interface{}{})
 
-			validateErrorCode(success, resolutionError, of.GeneralCode, t)
+			validateErrorCode(t, success, resolutionError, of.GeneralCode)
 		})
 	}
 }
@@ -227,7 +227,7 @@ func TestEvaluationError4xx(t *testing.T) {
 			}}
 			success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
 
-			validateErrorCode(success, resolutionError, test.expectCode, t)
+			validateErrorCode(t, success, resolutionError, test.expectCode)
 		})
 	}
 }
@@ -240,7 +240,7 @@ func TestFlagNotFound404(t *testing.T) {
 	}}
 	success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
 
-	validateErrorCode(success, resolutionError, of.FlagNotFoundCode, t)
+	validateErrorCode(t, success, resolutionError, of.FlagNotFoundCode)
 }
 
 func Test429(t *testing.T) {
@@ -277,7 +277,7 @@ func Test429(t *testing.T) {
 			resolver := OutboundResolver{client: mockOutbound{rsp: response}}
 			success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
 
-			validateErrorCode(success, resolutionError, of.GeneralCode, t)
+			validateErrorCode(t, success, resolutionError, of.GeneralCode)
 		})
 	}
 }
@@ -292,7 +292,7 @@ func TestEvaluationError5xx(t *testing.T) {
 		}}
 		success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
 
-		validateErrorCode(success, resolutionError, of.GeneralCode, t)
+		validateErrorCode(t, success, resolutionError, of.GeneralCode)
 	})
 
 	t.Run("with valid body", func(t *testing.T) {
@@ -309,7 +309,7 @@ func TestEvaluationError5xx(t *testing.T) {
 		}}
 		success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
 
-		validateErrorCode(success, resolutionError, of.GeneralCode, t)
+		validateErrorCode(t, success, resolutionError, of.GeneralCode)
 	})
 
 	t.Run("with invalid body", func(t *testing.T) {
@@ -321,21 +321,25 @@ func TestEvaluationError5xx(t *testing.T) {
 		}}
 		success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
 
-		validateErrorCode(success, resolutionError, of.GeneralCode, t)
+		validateErrorCode(t, success, resolutionError, of.GeneralCode)
 	})
 }
 
-func validateErrorCode(success *successDto, resolutionError *of.ResolutionError, errorCode of.ErrorCode, t *testing.T) {
+func validateErrorCode(tb testing.TB, success *successDto, resolutionError *of.ResolutionError, errorCode of.ErrorCode) {
+	tb.Helper()
+
 	if success != nil {
-		t.Fatal("expected no success result, but got non nil value")
+		tb.Fatal("expected no success result, but got non nil value")
 	}
 
+	//nolint:staticcheck
 	if resolutionError == nil {
-		t.Fatal("expected non nil error, but got empty")
+		tb.Fatal("expected non nil error, but got empty")
 	}
 
+	//nolint:staticcheck
 	if !strings.Contains(resolutionError.Error(), string(errorCode)) {
-		t.Errorf("expected error to contain error code %s", errorCode)
+		tb.Errorf("expected error to contain error code %s", errorCode)
 	}
 }
 

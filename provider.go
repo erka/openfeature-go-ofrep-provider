@@ -2,7 +2,6 @@ package ofrep
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/open-feature/go-sdk-contrib/providers/ofrep/internal/evaluate"
@@ -10,7 +9,7 @@ import (
 	"github.com/open-feature/go-sdk/openfeature"
 )
 
-// Provider implementation for OFREP
+// Provider implementation for OFREP.
 type Provider struct {
 	evaluator Evaluator
 }
@@ -18,10 +17,10 @@ type Provider struct {
 type Option func(*outbound.Configuration)
 
 // NewProvider returns an OFREP provider configured with provided configuration.
-// The only mandatory configuration is the baseUri, which is the base path of the OFREP service implementation.
-func NewProvider(baseUri string, options ...Option) *Provider {
+// The only mandatory configuration is the baseURI, which is the base path of the OFREP service implementation.
+func NewProvider(baseURI string, options ...Option) *Provider {
 	cfg := outbound.Configuration{
-		BaseURI: baseUri,
+		BaseURI: baseURI,
 	}
 
 	for _, option := range options {
@@ -67,23 +66,24 @@ func (p Provider) Hooks() []openfeature.Hook {
 
 // options of the OFREP provider
 
-// WithHeaderProvider allows to configure a custom header callback to set a custom authorization header
+// WithHeaderProvider allows to configure a custom header callback to set a custom authorization header.
 func WithHeaderProvider(callback outbound.HeaderCallback) func(*outbound.Configuration) {
 	return func(c *outbound.Configuration) {
 		c.Callbacks = append(c.Callbacks, callback)
 	}
 }
 
-// WithBearerToken allows to set token to be used for bearer token authorization
+// WithBearerToken allows to set token to be used for bearer token authorization.
 func WithBearerToken(token string) func(*outbound.Configuration) {
 	return func(c *outbound.Configuration) {
 		c.Callbacks = append(c.Callbacks, func() (string, string) {
-			return "Authorization", fmt.Sprintf("Bearer %s", token)
+			return "Authorization", "Bearer " + token
 		})
 	}
 }
 
-// WithApiKeyAuth allows to set token to be used for api key authorization
+// WithApiKeyAuth allows to set token to be used for api key authorization.
+// nolint: stylecheck
 func WithApiKeyAuth(token string) func(*outbound.Configuration) {
 	return func(c *outbound.Configuration) {
 		c.Callbacks = append(c.Callbacks, func() (string, string) {
@@ -92,7 +92,7 @@ func WithApiKeyAuth(token string) func(*outbound.Configuration) {
 	}
 }
 
-// WithClient allows to provide a pre-configured http.Client for the communication with the OFREP service
+// WithClient allows to provide a pre-configured http.Client for the communication with the OFREP service.
 func WithClient(client *http.Client) func(configuration *outbound.Configuration) {
 	return func(configuration *outbound.Configuration) {
 		configuration.Client = client

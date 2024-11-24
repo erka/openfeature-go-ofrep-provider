@@ -24,238 +24,110 @@ func NewFlagsEvaluator(cfg outbound.Configuration) *Flags {
 }
 
 func (h Flags) ResolveBoolean(ctx context.Context, key string, defaultValue bool, evalCtx map[string]interface{}) of.BoolResolutionDetail {
-	evalSuccess, resolutionError := h.resolver.resolveSingle(ctx, key, evalCtx)
-	if resolutionError != nil {
-		return of.BoolResolutionDetail{
-			Value: defaultValue,
-			ProviderResolutionDetail: of.ProviderResolutionDetail{
-				ResolutionError: *resolutionError,
-				Reason:          of.ErrorReason,
-			},
-		}
-	}
-
-	if evalSuccess.Reason == string(of.DisabledReason) {
-		return of.BoolResolutionDetail{
-			Value: defaultValue,
-			ProviderResolutionDetail: of.ProviderResolutionDetail{
-				Reason:       of.DisabledReason,
-				Variant:      evalSuccess.Variant,
-				FlagMetadata: evalSuccess.Metadata,
-			},
-		}
-	}
-
-	b, ok := evalSuccess.Value.(bool)
-	if !ok {
-		return of.BoolResolutionDetail{
-			Value: defaultValue,
-			ProviderResolutionDetail: of.ProviderResolutionDetail{
-				ResolutionError: of.NewTypeMismatchResolutionError(fmt.Sprintf(
-					"resolved value %v is not of boolean type", evalSuccess.Value)),
-				Reason: of.ErrorReason,
-			},
-		}
-	}
-
+	value, resolution := resolve(ctx, h.resolver, key, defaultValue, evalCtx, convertDefault)
 	return of.BoolResolutionDetail{
-		Value: b,
-		ProviderResolutionDetail: of.ProviderResolutionDetail{
-			Reason:       of.Reason(evalSuccess.Reason),
-			Variant:      evalSuccess.Variant,
-			FlagMetadata: evalSuccess.Metadata,
-		},
+		Value:                    value,
+		ProviderResolutionDetail: resolution,
 	}
 }
 
 func (h Flags) ResolveString(ctx context.Context, key string, defaultValue string, evalCtx map[string]interface{}) of.StringResolutionDetail {
-	evalSuccess, resolutionError := h.resolver.resolveSingle(ctx, key, evalCtx)
-	if resolutionError != nil {
-		return of.StringResolutionDetail{
-			Value: defaultValue,
-			ProviderResolutionDetail: of.ProviderResolutionDetail{
-				ResolutionError: *resolutionError,
-				Reason:          of.ErrorReason,
-			},
-		}
-	}
-
-	if evalSuccess.Reason == string(of.DisabledReason) {
-		return of.StringResolutionDetail{
-			Value: defaultValue,
-			ProviderResolutionDetail: of.ProviderResolutionDetail{
-				Reason:       of.DisabledReason,
-				Variant:      evalSuccess.Variant,
-				FlagMetadata: evalSuccess.Metadata,
-			},
-		}
-	}
-
-	b, ok := evalSuccess.Value.(string)
-	if !ok {
-		return of.StringResolutionDetail{
-			Value: defaultValue,
-			ProviderResolutionDetail: of.ProviderResolutionDetail{
-				ResolutionError: of.NewTypeMismatchResolutionError(fmt.Sprintf(
-					"resolved value %v is not of string type", evalSuccess.Value)),
-				Reason: of.ErrorReason,
-			},
-		}
-	}
+	value, resolution := resolve(ctx, h.resolver, key, defaultValue, evalCtx, convertDefault)
 
 	return of.StringResolutionDetail{
-		Value: b,
-		ProviderResolutionDetail: of.ProviderResolutionDetail{
-			Reason:       of.Reason(evalSuccess.Reason),
-			Variant:      evalSuccess.Variant,
-			FlagMetadata: evalSuccess.Metadata,
-		},
+		Value:                    value,
+		ProviderResolutionDetail: resolution,
 	}
 }
 
 func (h Flags) ResolveFloat(ctx context.Context, key string, defaultValue float64, evalCtx map[string]interface{}) of.FloatResolutionDetail {
-	evalSuccess, resolutionError := h.resolver.resolveSingle(ctx, key, evalCtx)
-	if resolutionError != nil {
-		return of.FloatResolutionDetail{
-			Value: defaultValue,
-			ProviderResolutionDetail: of.ProviderResolutionDetail{
-				ResolutionError: *resolutionError,
-				Reason:          of.ErrorReason,
-			},
-		}
-	}
-
-	if evalSuccess.Reason == string(of.DisabledReason) {
-		return of.FloatResolutionDetail{
-			Value: defaultValue,
-			ProviderResolutionDetail: of.ProviderResolutionDetail{
-				Reason:       of.DisabledReason,
-				Variant:      evalSuccess.Variant,
-				FlagMetadata: evalSuccess.Metadata,
-			},
-		}
-	}
-
-	var value float64
-
-	switch evalSuccess.Value.(type) {
-	case float32:
-		value = float64(evalSuccess.Value.(float32))
-	case float64:
-		value = evalSuccess.Value.(float64)
-	default:
-		return of.FloatResolutionDetail{
-			Value: defaultValue,
-			ProviderResolutionDetail: of.ProviderResolutionDetail{
-				ResolutionError: of.NewTypeMismatchResolutionError(fmt.Sprintf(
-					"resolved value %v is not of float type", evalSuccess.Value)),
-				Reason: of.ErrorReason,
-			},
-		}
-	}
-
+	value, resolution := resolve(ctx, h.resolver, key, defaultValue, evalCtx, convertToFloat64)
 	return of.FloatResolutionDetail{
-		Value: value,
-		ProviderResolutionDetail: of.ProviderResolutionDetail{
-			Reason:       of.Reason(evalSuccess.Reason),
-			Variant:      evalSuccess.Variant,
-			FlagMetadata: evalSuccess.Metadata,
-		},
+		Value:                    value,
+		ProviderResolutionDetail: resolution,
 	}
 }
 
 func (h Flags) ResolveInt(ctx context.Context, key string, defaultValue int64, evalCtx map[string]interface{}) of.IntResolutionDetail {
-	evalSuccess, resolutionError := h.resolver.resolveSingle(ctx, key, evalCtx)
-	if resolutionError != nil {
-		return of.IntResolutionDetail{
-			Value: defaultValue,
-			ProviderResolutionDetail: of.ProviderResolutionDetail{
-				ResolutionError: *resolutionError,
-				Reason:          of.ErrorReason,
-			},
-		}
-	}
-
-	if evalSuccess.Reason == string(of.DisabledReason) {
-		return of.IntResolutionDetail{
-			Value: defaultValue,
-			ProviderResolutionDetail: of.ProviderResolutionDetail{
-				Reason:       of.DisabledReason,
-				Variant:      evalSuccess.Variant,
-				FlagMetadata: evalSuccess.Metadata,
-			},
-		}
-	}
-
-	var value int64
-
-	switch evalSuccess.Value.(type) {
-	case int:
-		value = int64(evalSuccess.Value.(int))
-	case int64:
-		value = evalSuccess.Value.(int64)
-	case float64:
-		value = int64(evalSuccess.Value.(float64))
-		if float64(value) != evalSuccess.Value.(float64) {
-			return of.IntResolutionDetail{
-				Value: defaultValue,
-				ProviderResolutionDetail: of.ProviderResolutionDetail{
-					ResolutionError: of.NewTypeMismatchResolutionError(fmt.Sprintf(
-						"resolved value %v is not of integer type", evalSuccess.Value)),
-					Reason: of.ErrorReason,
-				},
-			}
-		}
-	default:
-		return of.IntResolutionDetail{
-			Value: defaultValue,
-			ProviderResolutionDetail: of.ProviderResolutionDetail{
-				ResolutionError: of.NewTypeMismatchResolutionError(fmt.Sprintf(
-					"resolved value %v is not of integer type", evalSuccess.Value)),
-				Reason: of.ErrorReason,
-			},
-		}
-	}
-
+	value, resolution := resolve(ctx, h.resolver, key, defaultValue, evalCtx, convertToInt64)
 	return of.IntResolutionDetail{
-		Value: value,
-		ProviderResolutionDetail: of.ProviderResolutionDetail{
-			Reason:       of.Reason(evalSuccess.Reason),
-			Variant:      evalSuccess.Variant,
-			FlagMetadata: evalSuccess.Metadata,
-		},
+		Value:                    value,
+		ProviderResolutionDetail: resolution,
 	}
 }
 
 func (h Flags) ResolveObject(ctx context.Context, key string, defaultValue interface{}, evalCtx map[string]interface{}) of.InterfaceResolutionDetail {
-	evalSuccess, resolutionError := h.resolver.resolveSingle(ctx, key, evalCtx)
+	value, resolution := resolve(ctx, h.resolver, key, defaultValue, evalCtx, convertDefault)
+	return of.InterfaceResolutionDetail{
+		Value:                    value,
+		ProviderResolutionDetail: resolution,
+	}
+}
+
+type convertFunc[T any] func(v any) (T, bool)
+
+func resolve[T any](ctx context.Context, resolver resolver, key string, defaultValue T, evalCtx map[string]interface{}, convert convertFunc[T]) (T, of.ProviderResolutionDetail) {
+	evalSuccess, resolutionError := resolver.resolveSingle(ctx, key, evalCtx)
 	if resolutionError != nil {
-		return of.InterfaceResolutionDetail{
-			Value: defaultValue,
-			ProviderResolutionDetail: of.ProviderResolutionDetail{
-				ResolutionError: *resolutionError,
-				Reason:          of.ErrorReason,
-			},
+		return defaultValue, of.ProviderResolutionDetail{
+			ResolutionError: *resolutionError,
+			Reason:          of.ErrorReason,
 		}
 	}
 
 	if evalSuccess.Reason == string(of.DisabledReason) {
-		return of.InterfaceResolutionDetail{
-			Value: defaultValue,
-			ProviderResolutionDetail: of.ProviderResolutionDetail{
-				Reason:       of.DisabledReason,
-				Variant:      evalSuccess.Variant,
-				FlagMetadata: evalSuccess.Metadata,
-			},
+		return defaultValue, of.ProviderResolutionDetail{
+			Reason:       of.DisabledReason,
+			Variant:      evalSuccess.Variant,
+			FlagMetadata: evalSuccess.Metadata,
 		}
 	}
 
-	return of.InterfaceResolutionDetail{
-		Value: evalSuccess.Value,
-		ProviderResolutionDetail: of.ProviderResolutionDetail{
-			Reason:       of.Reason(evalSuccess.Reason),
-			Variant:      evalSuccess.Variant,
-			FlagMetadata: evalSuccess.Metadata,
-		},
+	b, ok := convert(evalSuccess.Value)
+	if !ok {
+		return defaultValue, of.ProviderResolutionDetail{
+			ResolutionError: of.NewTypeMismatchResolutionError(fmt.Sprintf(
+				"resolved value %v is not of %T type", evalSuccess.Value, defaultValue)),
+			Reason: of.ErrorReason,
+		}
+	}
+
+	return b, of.ProviderResolutionDetail{
+		Reason:       of.Reason(evalSuccess.Reason),
+		Variant:      evalSuccess.Variant,
+		FlagMetadata: evalSuccess.Metadata,
+	}
+}
+
+func convertDefault[T any](v any) (T, bool) {
+	b, ok := v.(T)
+	return b, ok
+}
+
+func convertToFloat64(v any) (float64, bool) {
+	switch v := v.(type) {
+	case float32:
+		return float64(v), true
+	case float64:
+		return v, true
+	default:
+		return 0, false
+	}
+}
+
+func convertToInt64(v any) (int64, bool) {
+	switch v := v.(type) {
+	case int:
+		return int64(v), true
+	case int64:
+		return v, true
+	case float64:
+		value := int64(v)
+		if float64(value) != v {
+			return 0, false
+		}
+		return value, true
+	default:
+		return 0, false
 	}
 }
