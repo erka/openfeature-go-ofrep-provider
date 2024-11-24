@@ -15,7 +15,7 @@ func TestHttpOutbound(t *testing.T) {
 	server := httptest.NewServer(mockHandler{t: t, path: path})
 	t.Cleanup(server.Close)
 
-	outbound := NewHttp(Configuration{
+	outbound := NewHTTP(Configuration{
 		Callbacks: []HeaderCallback{
 			func() (string, string) {
 				return "Authorization", "Token"
@@ -42,7 +42,7 @@ func TestHttpOutboundBulk(t *testing.T) {
 	server := httptest.NewServer(mockHandler{t: t, path: ofrepV1})
 	t.Cleanup(server.Close)
 
-	outbound := NewHttp(Configuration{
+	outbound := NewHTTP(Configuration{
 		Callbacks: []HeaderCallback{
 			func() (string, string) {
 				return "Authorization", "Token"

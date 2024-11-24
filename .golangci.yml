@@ -1,0 +1,30 @@
+linters:
+  enable:
+    - dupl
+    - errcheck
+    - goconst
+    - gocritic
+    - godot
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - perfsprint
+    - staticcheck
+    - stylecheck
+    - sqlclosecheck
+    - thelper
+    - unconvert
+    - unparam
+    - unused
+    - wrapcheck
+  disable:
+    - contextcheck
+    - exhaustive
+    - protogetter
+    - musttag
+  enable-all: false
+  presets:
+    - bugs
+    - unused

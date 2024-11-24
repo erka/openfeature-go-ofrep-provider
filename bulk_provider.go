@@ -2,20 +2,21 @@ package ofrep
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/open-feature/go-sdk-contrib/providers/ofrep/internal/evaluate"
 	"github.com/open-feature/go-sdk-contrib/providers/ofrep/internal/outbound"
-	"github.com/open-feature/go-sdk/openfeature"
 	of "github.com/open-feature/go-sdk/openfeature"
 )
 
 const providerName = "OFREP Bulk Provider"
 
-func NewBulkProvider(baseUri string, options ...Option) *BulkProvider {
+func NewBulkProvider(baseURI string, options ...Option) *BulkProvider {
 	cfg := outbound.Configuration{
-		BaseURI:               baseUri,
+		BaseURI:               baseURI,
 		ClientPollingInterval: 30 * time.Second,
 	}
 
@@ -45,7 +46,7 @@ type BulkProvider struct {
 	cancelFunc context.CancelFunc
 }
 
-func (p *BulkProvider) Metadata() openfeature.Metadata {
+func (p *BulkProvider) Metadata() of.Metadata {
 	return of.Metadata{
 		Name: providerName,
 	}
@@ -54,6 +55,7 @@ func (p *BulkProvider) Metadata() openfeature.Metadata {
 func (p *BulkProvider) Status() of.State {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
+
 	return p.state
 }
 
@@ -69,14 +71,14 @@ func (p *BulkProvider) Init(evalCtx of.EvaluationContext) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	p.cancelFunc = cancel
 
-	client := outbound.NewHttp(p.cfg)
+	client := outbound.NewHTTP(p.cfg)
 
 	flatCtx := FlattenContext(evalCtx)
 
 	evaluator := evaluate.NewBulkEvaluator(client, flatCtx)
 	err := evaluator.Fetch(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to fetch data: %w", err)
 	}
 
 	if p.cfg.PollingEnabled() {
@@ -116,7 +118,7 @@ func (p *BulkProvider) startPolling(ctx context.Context, evaluator *evaluate.Bul
 			case <-ticker.C:
 				err := evaluator.Fetch(ctx)
 				if err != nil {
-					if err != context.Canceled {
+					if errors.Is(err, context.Canceled) {
 						p.mu.Lock()
 						p.state = of.StaleState
 						p.mu.Unlock()

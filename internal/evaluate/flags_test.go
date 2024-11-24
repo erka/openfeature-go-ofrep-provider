@@ -140,7 +140,7 @@ func TestBooleanEvaluation(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			flags := Flags{resolver: test.resolver}
 			resolutionDetail := flags.ResolveBoolean(ctx, "booleanFlag", test.defaultValue, nil)
-			genericValidator[bool](test, resolutionDetail.Value, resolutionDetail.Reason, resolutionDetail.Error(), t)
+			genericValidator(t, test, resolutionDetail.Value, resolutionDetail.Reason, resolutionDetail.Error())
 		})
 	}
 }
@@ -206,7 +206,7 @@ func TestIntegerEvaluation(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			flags := Flags{resolver: test.resolver}
 			resolutionDetail := flags.ResolveInt(ctx, "intFlag", test.defaultValue, nil)
-			genericValidator[int64](test, resolutionDetail.Value, resolutionDetail.Reason, resolutionDetail.Error(), t)
+			genericValidator(t, test, resolutionDetail.Value, resolutionDetail.Reason, resolutionDetail.Error())
 		})
 	}
 }
@@ -264,7 +264,7 @@ func TestFloatEvaluation(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			flags := Flags{resolver: test.resolver}
 			resolutionDetail := flags.ResolveFloat(ctx, "floatFlag", test.defaultValue, nil)
-			genericValidator[float64](test, resolutionDetail.Value, resolutionDetail.Reason, resolutionDetail.Error(), t)
+			genericValidator(t, test, resolutionDetail.Value, resolutionDetail.Reason, resolutionDetail.Error())
 		})
 	}
 }
@@ -314,7 +314,7 @@ func TestStringEvaluation(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			flags := Flags{resolver: test.resolver}
 			resolutionDetail := flags.ResolveString(ctx, "stringFlag", test.defaultValue, nil)
-			genericValidator[string](test, resolutionDetail.Value, resolutionDetail.Reason, resolutionDetail.Error(), t)
+			genericValidator(t, test, resolutionDetail.Value, resolutionDetail.Reason, resolutionDetail.Error())
 		})
 	}
 }
@@ -355,31 +355,32 @@ func TestObjectEvaluation(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			flags := Flags{resolver: test.resolver}
 			resolutionDetail := flags.ResolveObject(ctx, "objectFlag", test.defaultValue, nil)
-			genericValidator[interface{}](test, resolutionDetail.Value, resolutionDetail.Reason, resolutionDetail.Error(), t)
+			genericValidator(t, test, resolutionDetail.Value, resolutionDetail.Reason, resolutionDetail.Error())
 		})
 	}
 }
 
-func genericValidator[T knownTypes](test testDefinition[T], resolvedValue T, reason of.Reason, err error, t *testing.T) {
+func genericValidator[T knownTypes](tb testing.TB, test testDefinition[T], resolvedValue T, reason of.Reason, err error) {
+	tb.Helper()
 	if test.isError {
 		if err == nil {
-			t.Error("expected error but got nil")
+			tb.Error("expected error but got nil")
 		}
 
 		if !reflect.DeepEqual(test.defaultValue, resolvedValue) {
-			t.Errorf("expected deafault value %v, but got %v", test.defaultValue, resolvedValue)
+			tb.Errorf("expected deafault value %v, but got %v", test.defaultValue, resolvedValue)
 		}
 
 		if reason != of.ErrorReason {
-			t.Errorf("expected reason %v, but got %v", of.ErrorReason, reason)
+			tb.Errorf("expected reason %v, but got %v", of.ErrorReason, reason)
 		}
 	} else {
 		if err != nil {
-			t.Fatalf("expected no error, but got none nil error: %v", err)
+			tb.Fatalf("expected no error, but got none nil error: %v", err)
 		}
 
 		if !reflect.DeepEqual(test.expect, resolvedValue) {
-			t.Errorf("expected value %v, but got %v", test.expect, resolvedValue)
+			tb.Errorf("expected value %v, but got %v", test.expect, resolvedValue)
 		}
 	}
 }

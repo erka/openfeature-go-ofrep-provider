@@ -38,11 +38,11 @@ type BulkEvaluator struct {
 func (b *BulkEvaluator) Fetch(ctx context.Context) error {
 	payload, err := json.Marshal(requestFrom(b.evalCtx))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to encode the request: %w", err)
 	}
 	res, err := b.client.Bulk(ctx, payload)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to fetch: %w", err)
 	}
 
 	switch res.Status {
@@ -50,7 +50,7 @@ func (b *BulkEvaluator) Fetch(ctx context.Context) error {
 		var data bulkEvaluationSuccess
 		err := json.Unmarshal(res.Data, &data)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to decode data: %w", err)
 		}
 		values := make(map[string]bulkEvaluationValue)
 		for _, value := range data.Flags {
