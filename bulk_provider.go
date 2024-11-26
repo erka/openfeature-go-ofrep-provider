@@ -100,7 +100,6 @@ func (p *BulkProvider) Shutdown() {
 	}
 
 	p.state = of.NotReadyState
-	p.evaluator = nil
 }
 
 func (p *BulkProvider) EventChannel() <-chan of.Event {
