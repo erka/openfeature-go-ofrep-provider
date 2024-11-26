@@ -7,6 +7,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -20,7 +21,7 @@ var evalCtx = of.NewEvaluationContext("keyboard", map[string]any{
 
 func TestBulkProviderEvaluationE2EBasic(t *testing.T) {
 	of.SetEvaluationContext(evalCtx)
-	baseURL := setupTestServer(t)
+	baseURL := setupTestServer(t, withSuccessResponse)
 	p := ofrep.NewBulkProvider(baseURL, ofrep.WithBearerToken("api-key"))
 
 	err := of.SetProviderAndWait(p)
@@ -55,7 +56,7 @@ func TestBulkProviderEvaluationE2EBasic(t *testing.T) {
 
 func TestBulkProviderEvaluationE2EPolling(t *testing.T) {
 	of.SetEvaluationContext(evalCtx)
-	baseURL := setupTestServer(t)
+	baseURL := setupTestServer(t, withSuccessResponse)
 	p := ofrep.NewBulkProvider(baseURL, ofrep.WithBearerToken("api-key"), ofrep.WithPollingInterval(30*time.Millisecond))
 
 	err := of.SetProviderAndWait(p)
@@ -67,7 +68,7 @@ func TestBulkProviderEvaluationE2EPolling(t *testing.T) {
 	}
 
 	// let the provider poll for flags in background at least once
-	time.Sleep(60 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	of.Shutdown()
 	if p.Status() != of.NotReadyState {
@@ -75,10 +76,87 @@ func TestBulkProviderEvaluationE2EPolling(t *testing.T) {
 	}
 }
 
-func setupTestServer(tb testing.TB) string {
+func TestRateLimitBulkProviderEvaluation(t *testing.T) {
+	of.SetEvaluationContext(evalCtx)
+	baseURL := setupTestServer(t, withRateLimitedResponse)
+	p := ofrep.NewBulkProvider(baseURL, ofrep.WithPollingInterval(30*time.Millisecond))
+	err := of.SetProviderAndWait(p)
+	if err != nil {
+		t.Errorf("expected ready provider, but got %v", err)
+	}
+
+	if p.Status() != of.ReadyState {
+		t.Errorf("expected %v, but got %v", of.ReadyState, p.Status())
+	}
+
+	// let the provider poll for flags in background at least once
+	time.Sleep(200 * time.Millisecond)
+
+	if p.Status() != of.StaleState {
+		t.Errorf("expected %v, but got %v", of.StaleState, p.Status())
+	}
+
+	of.Shutdown()
+	if p.Status() != of.NotReadyState {
+		t.Errorf("expected %v, but got %v", of.NotReadyState, p.Status())
+	}
+}
+
+func TestErrorBulkProviderEvaluation(t *testing.T) {
+	of.SetEvaluationContext(evalCtx)
+	baseURL := setupTestServer(t, withErrorResponse)
+	p := ofrep.NewBulkProvider(baseURL, ofrep.WithPollingInterval(30*time.Millisecond))
+	err := of.SetProviderAndWait(p)
+	if err == nil {
+		t.Errorf("expected not ready provider, but got ready")
+	}
+
+	if p.Status() != of.ErrorState {
+		t.Errorf("expected %v, but got %v", of.ErrorState, p.Status())
+	}
+
+	// let the provider poll for flags in background at least once
+	time.Sleep(200 * time.Millisecond)
+
+	if p.Status() != of.ErrorState {
+		t.Errorf("expected %v, but got %v", of.ErrorState, p.Status())
+	}
+
+	of.Shutdown()
+	if p.Status() != of.NotReadyState {
+		t.Errorf("expected %v, but got %v", of.NotReadyState, p.Status())
+	}
+}
+
+func TestDoubleInitialization(t *testing.T) {
+	of.SetEvaluationContext(evalCtx)
+	baseURL := setupTestServer(t, withErrorResponse)
+	p := ofrep.NewBulkProvider(baseURL)
+	err := of.SetProviderAndWait(p)
+	if err == nil {
+		t.Errorf("expected not ready provider, but got ready")
+	}
+
+	// Reinitialize the provider
+	err = of.SetProviderAndWait(p)
+	if err != nil {
+		t.Errorf("expected no err, but got %v", err)
+	}
+}
+
+func setupTestServer(tb testing.TB, f func(testing.TB) func(w http.ResponseWriter, r *http.Request)) string {
 	tb.Helper()
 	mux := http.NewServeMux()
-	mux.HandleFunc("/ofrep/v1/evaluate/flags", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/ofrep/v1/evaluate/flags", f(tb))
+
+	s := httptest.NewServer(mux)
+	tb.Cleanup(s.Close)
+	return s.URL
+}
+
+func withSuccessResponse(tb testing.TB) func(w http.ResponseWriter, r *http.Request) {
+	tb.Helper()
+	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			tb.Errorf("expected post request, got: %v", r.Method)
 		}
@@ -116,9 +194,46 @@ func setupTestServer(tb testing.TB) string {
 		if err != nil {
 			tb.Errorf("error writing response: %v", err)
 		}
-	})
+	}
+}
 
-	s := httptest.NewServer(mux)
-	tb.Cleanup(s.Close)
-	return s.URL
+func withRateLimitedResponse(tb testing.TB) func(w http.ResponseWriter, r *http.Request) {
+	tb.Helper()
+	init := atomic.Bool{}
+	return func(w http.ResponseWriter, r *http.Request) {
+		// response with success for first call
+		if !init.Swap(true) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			data := `{"flags":[
+       {"key":"flag-bool","reason":"DEFAULT","variant":"true","metadata":{},"value":true}
+      ]}`
+			_, err := w.Write([]byte(data))
+			if err != nil {
+				tb.Errorf("error writing response: %v", err)
+			}
+			return
+		}
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Retry-After", "13")
+		data := `{}`
+		_, err := w.Write([]byte(data))
+		if err != nil {
+			tb.Errorf("error writing response: %v", err)
+		}
+	}
+}
+
+func withErrorResponse(tb testing.TB) func(w http.ResponseWriter, r *http.Request) {
+	tb.Helper()
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		data := `{}`
+		_, err := w.Write([]byte(data))
+		if err != nil {
+			tb.Errorf("error writing response: %v", err)
+		}
+	}
 }

@@ -75,10 +75,12 @@ func (p *BulkProvider) Init(evalCtx of.EvaluationContext) error {
 
 	flatCtx := FlattenContext(evalCtx)
 
+	p.state = of.ReadyState
 	evaluator := evaluate.NewBulkEvaluator(client, flatCtx)
 	err := evaluator.Fetch(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to fetch data: %w", err)
+		err = fmt.Errorf("failed to fetch data: %w", err)
+		p.state = of.ErrorState
 	}
 
 	if p.cfg.PollingEnabled() {
@@ -86,8 +88,7 @@ func (p *BulkProvider) Init(evalCtx of.EvaluationContext) error {
 	}
 
 	p.evaluator = evaluator
-	p.state = of.ReadyState
-	return nil
+	return err
 }
 
 func (p *BulkProvider) Shutdown() {
@@ -98,12 +99,22 @@ func (p *BulkProvider) Shutdown() {
 		p.cancelFunc()
 		p.cancelFunc = nil
 	}
-
 	p.state = of.NotReadyState
+	p.evaluator = nil
 }
 
 func (p *BulkProvider) EventChannel() <-chan of.Event {
 	return p.events
+}
+
+func (p *BulkProvider) setState(state of.State, eventType of.EventType, message string) {
+	p.mu.Lock()
+	p.state = state
+	p.mu.Unlock()
+	p.events <- of.Event{
+		ProviderName: providerName, EventType: eventType,
+		ProviderEventDetails: of.ProviderEventDetails{Message: message},
+	}
 }
 
 func (p *BulkProvider) startPolling(ctx context.Context, evaluator *evaluate.BulkEvaluator, pollingInterval time.Duration) {
@@ -116,30 +127,34 @@ func (p *BulkProvider) startPolling(ctx context.Context, evaluator *evaluate.Bul
 				return
 			case <-ticker.C:
 				err := evaluator.Fetch(ctx)
+				if errors.Is(err, context.Canceled) {
+					// shutdown
+					return
+				}
+				p.mu.RLock()
+				oldState := p.state
+				p.mu.RUnlock()
+
 				if err != nil {
-					if errors.Is(err, context.Canceled) {
-						p.mu.Lock()
-						p.state = of.StaleState
-						p.mu.Unlock()
-						p.events <- of.Event{
-							ProviderName: providerName, EventType: of.ProviderStale,
-							ProviderEventDetails: of.ProviderEventDetails{Message: err.Error()},
-						}
+					switch oldState {
+					case of.ReadyState, of.StaleState:
+						p.setState(of.StaleState, of.ProviderStale, err.Error())
+					case of.ErrorState:
+						p.setState(of.ErrorState, of.ProviderError, err.Error())
 					}
 					continue
 				}
-				p.mu.RLock()
-				state := p.state
-				p.mu.RUnlock()
-				if state != of.ReadyState {
-					p.mu.Lock()
-					p.state = of.ReadyState
-					p.mu.Unlock()
+
+				switch oldState {
+				case of.ReadyState:
 					p.events <- of.Event{
-						ProviderName: providerName, EventType: of.ProviderReady,
-						ProviderEventDetails: of.ProviderEventDetails{Message: "Provider is ready"},
+						ProviderName: providerName, EventType: of.ProviderConfigChange,
+						ProviderEventDetails: of.ProviderEventDetails{Message: "Flags is updated"},
 					}
+				default:
+					p.setState(of.ReadyState, of.ProviderReady, "Provider is ready")
 				}
+
 			}
 		}
 	}()
