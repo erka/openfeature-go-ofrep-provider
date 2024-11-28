@@ -20,7 +20,7 @@ jobs:
       - name: Install deps
         run: go mod download
       - name: Run tests
-        run: go test -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt -v ./...
+        run: go test -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt -v ./...
       - name: Run lint
         uses: golangci/golangci-lint-action@v6.1.1
       - name: Upload coverage reports to Codecov

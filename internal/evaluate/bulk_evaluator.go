@@ -57,8 +57,10 @@ func (b *BulkEvaluator) Fetch(ctx context.Context) error {
 			values[value.Key] = value
 		}
 		b.setValues(values)
+		return nil
 	case http.StatusNotModified: // 304
 		// No changes
+		return nil
 	case http.StatusBadRequest: // 400
 		return parseError400(res.Data)
 	case http.StatusUnauthorized, http.StatusForbidden: // 401, 403
@@ -75,8 +77,6 @@ func (b *BulkEvaluator) Fetch(ctx context.Context) error {
 	default:
 		return parseError500(res.Data)
 	}
-
-	return nil
 }
 
 func (b *BulkEvaluator) setValues(values map[string]bulkEvaluationValue) {
