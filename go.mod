@@ -4,7 +4,7 @@ go 1.22.0
 
 toolchain go1.23.3
 
-require github.com/open-feature/go-sdk v1.13.1
+require github.com/open-feature/go-sdk v1.14.0
 
 require (
 	github.com/go-logr/logr v1.4.2 // indirect
