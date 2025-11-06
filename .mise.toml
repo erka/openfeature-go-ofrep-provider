@@ -5,3 +5,7 @@ golangci-lint = "2.12.2"
 [tasks.lint]
 description = "Run golangci-lint"
 run = "golangci-lint run"
+
+[tasks.test]
+description = "Run tests with race detection and coverage"
+run = "go test -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt -v ./..."

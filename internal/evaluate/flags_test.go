@@ -13,12 +13,12 @@ type mockResolver struct {
 	err     *of.ResolutionError
 }
 
-func (m mockResolver) resolveSingle(ctx context.Context, key string, evalCtx map[string]interface{}) (*successDto, *of.ResolutionError) {
+func (m mockResolver) resolveSingle(ctx context.Context, key string, evalCtx map[string]any) (*successDto, *of.ResolutionError) {
 	return m.success, m.err
 }
 
 type knownTypes interface {
-	int64 | bool | float64 | string | interface{}
+	int64 | bool | float64 | string | any
 }
 
 type testDefinition[T knownTypes] struct {
@@ -322,13 +322,13 @@ func TestStringEvaluation(t *testing.T) {
 func TestObjectEvaluation(t *testing.T) {
 	ctx := context.Background()
 
-	tests := []testDefinition[interface{}]{
+	tests := []testDefinition[any]{
 		{
 			name: "Success evaluation",
 			resolver: mockResolver{
 				success: &successObject,
 			},
-			defaultValue: map[string]interface{}{},
+			defaultValue: map[string]any{},
 			expect:       successObject.Value,
 		},
 		{
@@ -337,16 +337,16 @@ func TestObjectEvaluation(t *testing.T) {
 				err: &parseError,
 			},
 			isError:      true,
-			defaultValue: map[string]interface{}{},
-			expect:       map[string]interface{}{},
+			defaultValue: map[string]any{},
+			expect:       map[string]any{},
 		},
 		{
 			name: "disabled flag",
 			resolver: mockResolver{
 				success: &successDisabled,
 			},
-			defaultValue: map[string]interface{}{},
-			expect:       map[string]interface{}{},
+			defaultValue: map[string]any{},
+			expect:       map[string]any{},
 			isError:      false,
 		},
 	}

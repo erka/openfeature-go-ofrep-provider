@@ -14,7 +14,7 @@ type Flags struct {
 }
 
 type resolver interface {
-	resolveSingle(ctx context.Context, key string, evalCtx map[string]interface{}) (*successDto, *of.ResolutionError)
+	resolveSingle(ctx context.Context, key string, evalCtx map[string]any) (*successDto, *of.ResolutionError)
 }
 
 func NewFlagsEvaluator(cfg outbound.Configuration) *Flags {
@@ -23,7 +23,7 @@ func NewFlagsEvaluator(cfg outbound.Configuration) *Flags {
 	}
 }
 
-func (h Flags) ResolveBoolean(ctx context.Context, key string, defaultValue bool, evalCtx map[string]interface{}) of.BoolResolutionDetail {
+func (h Flags) ResolveBoolean(ctx context.Context, key string, defaultValue bool, evalCtx map[string]any) of.BoolResolutionDetail {
 	value, resolution := resolve(ctx, h.resolver, key, defaultValue, evalCtx, convertDefault)
 	return of.BoolResolutionDetail{
 		Value:                    value,
@@ -31,7 +31,7 @@ func (h Flags) ResolveBoolean(ctx context.Context, key string, defaultValue bool
 	}
 }
 
-func (h Flags) ResolveString(ctx context.Context, key string, defaultValue string, evalCtx map[string]interface{}) of.StringResolutionDetail {
+func (h Flags) ResolveString(ctx context.Context, key string, defaultValue string, evalCtx map[string]any) of.StringResolutionDetail {
 	value, resolution := resolve(ctx, h.resolver, key, defaultValue, evalCtx, convertDefault)
 
 	return of.StringResolutionDetail{
@@ -40,7 +40,7 @@ func (h Flags) ResolveString(ctx context.Context, key string, defaultValue strin
 	}
 }
 
-func (h Flags) ResolveFloat(ctx context.Context, key string, defaultValue float64, evalCtx map[string]interface{}) of.FloatResolutionDetail {
+func (h Flags) ResolveFloat(ctx context.Context, key string, defaultValue float64, evalCtx map[string]any) of.FloatResolutionDetail {
 	value, resolution := resolve(ctx, h.resolver, key, defaultValue, evalCtx, convertToFloat64)
 	return of.FloatResolutionDetail{
 		Value:                    value,
@@ -48,7 +48,7 @@ func (h Flags) ResolveFloat(ctx context.Context, key string, defaultValue float6
 	}
 }
 
-func (h Flags) ResolveInt(ctx context.Context, key string, defaultValue int64, evalCtx map[string]interface{}) of.IntResolutionDetail {
+func (h Flags) ResolveInt(ctx context.Context, key string, defaultValue int64, evalCtx map[string]any) of.IntResolutionDetail {
 	value, resolution := resolve(ctx, h.resolver, key, defaultValue, evalCtx, convertToInt64)
 	return of.IntResolutionDetail{
 		Value:                    value,
@@ -56,7 +56,7 @@ func (h Flags) ResolveInt(ctx context.Context, key string, defaultValue int64, e
 	}
 }
 
-func (h Flags) ResolveObject(ctx context.Context, key string, defaultValue interface{}, evalCtx map[string]interface{}) of.InterfaceResolutionDetail {
+func (h Flags) ResolveObject(ctx context.Context, key string, defaultValue any, evalCtx map[string]any) of.InterfaceResolutionDetail {
 	value, resolution := resolve(ctx, h.resolver, key, defaultValue, evalCtx, convertDefault)
 	return of.InterfaceResolutionDetail{
 		Value:                    value,
@@ -66,7 +66,7 @@ func (h Flags) ResolveObject(ctx context.Context, key string, defaultValue inter
 
 type convertFunc[T any] func(v any) (T, bool)
 
-func resolve[T any](ctx context.Context, resolver resolver, key string, defaultValue T, evalCtx map[string]interface{}, convert convertFunc[T]) (T, of.ProviderResolutionDetail) {
+func resolve[T any](ctx context.Context, resolver resolver, key string, defaultValue T, evalCtx map[string]any, convert convertFunc[T]) (T, of.ProviderResolutionDetail) {
 	evalSuccess, resolutionError := resolver.resolveSingle(ctx, key, evalCtx)
 	if resolutionError != nil {
 		return defaultValue, of.ProviderResolutionDetail{

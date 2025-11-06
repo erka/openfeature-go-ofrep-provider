@@ -3,6 +3,11 @@ package ofrep
 import (
 	"context"
 	"net/http"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/open-feature/go-sdk-contrib/providers/ofrep/internal/evaluate"
 	"github.com/open-feature/go-sdk-contrib/providers/ofrep/internal/outbound"
@@ -21,8 +26,15 @@ type Option func(*outbound.Configuration)
 func NewProvider(baseURI string, options ...Option) *Provider {
 	cfg := outbound.Configuration{
 		BaseURI: baseURI,
+		Timeout: 10 * time.Second,
 	}
 
+	// Apply configuration from OFREP environment variables
+	WithFromEnv()(&cfg)
+	// Follow the spec - allow programmatic configuration to override environment variables
+	if baseURI != "" {
+		cfg.BaseURI = baseURI
+	}
 	for _, option := range options {
 		option(&cfg)
 	}
@@ -56,7 +68,7 @@ func (p Provider) IntEvaluation(ctx context.Context, flag string, defaultValue i
 	return p.evaluator.ResolveInt(ctx, flag, defaultValue, evalCtx)
 }
 
-func (p Provider) ObjectEvaluation(ctx context.Context, flag string, defaultValue interface{}, evalCtx openfeature.FlattenedContext) openfeature.InterfaceResolutionDetail {
+func (p Provider) ObjectEvaluation(ctx context.Context, flag string, defaultValue any, evalCtx openfeature.FlattenedContext) openfeature.InterfaceResolutionDetail {
 	return p.evaluator.ResolveObject(ctx, flag, defaultValue, evalCtx)
 }
 
@@ -96,5 +108,87 @@ func WithApiKeyAuth(token string) func(*outbound.Configuration) {
 func WithClient(client *http.Client) func(configuration *outbound.Configuration) {
 	return func(configuration *outbound.Configuration) {
 		configuration.Client = client
+	}
+}
+
+// WithHeader allows to set a custom header.
+func WithHeader(key, value string) func(*outbound.Configuration) {
+	return func(c *outbound.Configuration) {
+		c.Callbacks = append(c.Callbacks, func() (string, string) {
+			return key, value
+		})
+	}
+}
+
+// WithBaseURI allows to override the base URI of the OFREP service.
+func WithBaseURI(baseURI string) func(*outbound.Configuration) {
+	return func(c *outbound.Configuration) {
+		c.BaseURI = baseURI
+	}
+}
+
+// WithTimeout allows to configure the timeout for the http client used for communication with the OFREP service.
+// This option is ignored if a custom client is provided via WithClient.
+func WithTimeout(timeout time.Duration) func(*outbound.Configuration) {
+	return func(c *outbound.Configuration) {
+		c.Timeout = timeout
+	}
+}
+
+// WithFromEnv configures the provider using environment variables.
+//
+// Supported environment variables:
+//
+//   - OFREP_ENDPOINT: Base URL of the OFREP service.
+//   - OFREP_TIMEOUT_MS: Request timeout in milliseconds (e.g., "5000").
+//   - OFREP_HEADERS: Comma-separated list of custom headers
+//     (e.g., "Key1=Value1,Key2=Value2").
+//
+// When provided, environment variables take precedence over values
+// set programmatically via previous options.
+//
+// Example:
+//
+//	provider := NewProvider(
+//	    "https://ofrep.localhost/",
+//	    WithTimeout(time.Minute),
+//	    WithFromEnv(),
+//	)
+//
+// In this example, if OFREP_ENDPOINT or OFREP_TIMEOUT_MS are set,
+// their values override the ones passed via programmatic options.
+func WithFromEnv() func(*outbound.Configuration) {
+	envHandlers := map[string]func(*outbound.Configuration, string){
+		"OFREP_ENDPOINT": func(c *outbound.Configuration, v string) {
+			WithBaseURI(v)(c)
+		},
+		"OFREP_TIMEOUT_MS": func(c *outbound.Configuration, v string) {
+			t, err := strconv.Atoi(v)
+			if err == nil && t > 0 {
+				WithTimeout(time.Duration(t) * time.Millisecond)(c)
+			}
+		},
+		"OFREP_HEADERS": func(c *outbound.Configuration, v string) {
+			v, err := url.PathUnescape(v)
+			if err != nil {
+				return
+			}
+			for pair := range strings.SplitSeq(v, ",") {
+				kv := strings.SplitN(pair, "=", 2)
+				if len(kv) != 2 {
+					continue
+				}
+				k := strings.TrimSpace(kv[0])
+				v := strings.TrimSpace(kv[1])
+				WithHeader(k, v)(c)
+			}
+		},
+	}
+	return func(c *outbound.Configuration) {
+		for key, handler := range envHandlers {
+			if v := os.Getenv(key); v != "" {
+				handler(c, v)
+			}
+		}
 	}
 }
