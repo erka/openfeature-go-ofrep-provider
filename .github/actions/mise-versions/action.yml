@@ -1,0 +1,23 @@
+name: Mise Versions
+description: Export tool versions from .mise.toml as step outputs
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        awk '/^\[tools\]/ { in_tools=1; next }
+             /^\[/ { in_tools=0 }
+             in_tools && /=/ {
+               eq = index($0, "=")
+               key = substr($0, 1, eq - 1)
+               val = substr($0, eq + 1)
+               gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
+               gsub(/^[[:space:]]+|[[:space:]]+$/, "", val)
+               gsub(/^"|"$/, "", val)
+               gsub(/^'"'"'|'"'"'$/, "", val)
+               if (length(key) > 0) {
+                 print key "=" val >> ENVIRON["GITHUB_OUTPUT"]
+                 print key "=" val >> ENVIRON["GITHUB_ENV"]
+               }
+             }' .mise.toml

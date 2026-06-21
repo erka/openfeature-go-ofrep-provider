@@ -11,7 +11,7 @@ import (
 	of "github.com/open-feature/go-sdk/openfeature"
 )
 
-// Outbound defines the contract for resolver's outbound communication, matching OFREP API.
+// BulkOutbound defines the contract for resolver's outbound communication, matching OFREP API.
 type BulkOutbound interface {
 	// Bulk flags resolving
 	Bulk(ctx context.Context, paylod []byte) (*outbound.Resolution, error)
@@ -71,7 +71,8 @@ func (b *BulkEvaluator) Fetch(ctx context.Context) error {
 			return of.NewGeneralResolutionError("rate limit exceeded")
 		}
 		return of.NewGeneralResolutionError(
-			fmt.Sprintf("rate limit exceeded, try again after %f seconds", after.Seconds()))
+			fmt.Sprintf("rate limit exceeded, try again after %f seconds", after.Seconds()),
+		)
 	case http.StatusInternalServerError: // 500
 		return parseError500(res.Data)
 	default:
