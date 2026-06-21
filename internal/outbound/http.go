@@ -90,7 +90,7 @@ func (h *Outbound) sendRequest(ctx context.Context, path string, payload []byte)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make a request: %w", err)
 	}
-	defer rsp.Body.Close()
+	defer func() { _ = rsp.Body.Close() }()
 
 	b, err := io.ReadAll(rsp.Body)
 	if err != nil {
