@@ -22,6 +22,7 @@ type Configuration struct {
 	Callbacks             []HeaderCallback
 	Client                *http.Client
 	ClientPollingInterval time.Duration
+	Timeout               time.Duration
 }
 
 func (c *Configuration) PollingEnabled() bool {
@@ -47,8 +48,12 @@ type Outbound struct {
 
 func NewHTTP(cfg Configuration) *Outbound {
 	if cfg.Client == nil {
+		timeout := cfg.Timeout
+		if timeout <= 0 {
+			timeout = 10 * time.Second
+		}
 		cfg.Client = &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: timeout,
 		}
 	}
 

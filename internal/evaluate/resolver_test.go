@@ -22,7 +22,7 @@ var success = evaluationSuccess{
 	Key:     "flagA",
 	Reason:  string(of.StaticReason),
 	Variant: "true",
-	Metadata: map[string]interface{}{
+	Metadata: map[string]any{
 		"key": "value",
 	},
 }
@@ -56,7 +56,7 @@ func TestSuccess200(t *testing.T) {
 			},
 		}}
 
-		successDto, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
+		successDto, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]any))
 
 		if resolutionError != nil {
 			t.Errorf("expected no errors, but got error: %v", err)
@@ -90,7 +90,7 @@ func TestSuccess200(t *testing.T) {
 				Data:   []byte("some payload"),
 			},
 		}}
-		success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
+		success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]any))
 
 		validateErrorCode(t, success, resolutionError, of.ParseErrorCode)
 	})
@@ -107,7 +107,7 @@ func TestSuccess200(t *testing.T) {
 				Data:   b,
 			},
 		}}
-		success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
+		success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]any))
 
 		validateErrorCode(t, success, resolutionError, of.ParseErrorCode)
 	})
@@ -123,7 +123,7 @@ func TestSuccess200(t *testing.T) {
 				Data:   b,
 			},
 		}}
-		success, _ := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
+		success, _ := resolver.resolveSingle(context.Background(), "", make(map[string]any))
 
 		if len(success.Metadata) > 0 {
 			t.Errorf("should not have metadata, but got %v", success.Metadata)
@@ -169,7 +169,7 @@ func TestResolveGeneralErrors(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			resolver := OutboundResolver{client: test.client}
-			success, resolutionError := resolver.resolveSingle(context.Background(), "key", map[string]interface{}{})
+			success, resolutionError := resolver.resolveSingle(context.Background(), "key", map[string]any{})
 
 			validateErrorCode(t, success, resolutionError, of.GeneralCode)
 		})
@@ -225,7 +225,7 @@ func TestEvaluationError4xx(t *testing.T) {
 					Data:   errBytes,
 				},
 			}}
-			success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
+			success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]any))
 
 			validateErrorCode(t, success, resolutionError, test.expectCode)
 		})
@@ -238,7 +238,7 @@ func TestFlagNotFound404(t *testing.T) {
 			Status: http.StatusNotFound,
 		},
 	}}
-	success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
+	success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]any))
 
 	validateErrorCode(t, success, resolutionError, of.FlagNotFoundCode)
 }
@@ -275,7 +275,7 @@ func Test429(t *testing.T) {
 			}
 
 			resolver := OutboundResolver{client: mockOutbound{rsp: response}}
-			success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
+			success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]any))
 
 			validateErrorCode(t, success, resolutionError, of.GeneralCode)
 		})
@@ -290,7 +290,7 @@ func TestEvaluationError5xx(t *testing.T) {
 				Data:   []byte{},
 			},
 		}}
-		success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
+		success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]any))
 
 		validateErrorCode(t, success, resolutionError, of.GeneralCode)
 	})
@@ -307,7 +307,7 @@ func TestEvaluationError5xx(t *testing.T) {
 				Data:   errorBytes,
 			},
 		}}
-		success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
+		success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]any))
 
 		validateErrorCode(t, success, resolutionError, of.GeneralCode)
 	})
@@ -319,7 +319,7 @@ func TestEvaluationError5xx(t *testing.T) {
 				Data:   []byte("some error"),
 			},
 		}}
-		success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]interface{}))
+		success, resolutionError := resolver.resolveSingle(context.Background(), "", make(map[string]any))
 
 		validateErrorCode(t, success, resolutionError, of.GeneralCode)
 	})
